@@ -7,10 +7,10 @@ import 'package:mvvm/mvvm.dart';
 
 void main() {
   runApp(MaterialApp(
-    home: Scaffold(
+    home: const Scaffold(
         body: SafeArea(
             child: DefaultTextStyle(
-                style: const TextStyle(
+                style: TextStyle(
                     fontSize: 20,
                     color: Colors.black,
                     fontFeatures: [FontFeature.tabularFigures()]),
@@ -79,17 +79,20 @@ class TimerViewModel extends ViewModel {
 
 // View
 class TimerView extends View<TimerViewModel> {
-  TimerView({Key? key}) : super(TimerViewModel(), key: key);
+  const TimerView({Key? key}) : super(key: key);
 
   pad(int v) => "$v".padLeft(2, "0");
   format(int v) =>
       "${pad(v ~/ (60 * 100))}:${pad(((v / 100) % 60).floor())}.${pad(v % 100)}";
 
   @override
-  Widget build(BuildContext context) {
+  TimerViewModel createViewModel() => TimerViewModel();
+
+  @override
+  Widget build(ViewBuildContext context, TimerViewModel model) {
     return Column(children: [
       const SizedBox(height: 60),
-      $.watch<int>(model.$timer,
+      $watch<int>(model.$timer,
           builder: (context, ms, child) =>
               Text(format(ms), style: const TextStyle(fontSize: 60))),
       const SizedBox(height: 40),
@@ -98,19 +101,19 @@ class TimerView extends View<TimerViewModel> {
         children: [
           ElevatedButton(
               onPressed: model.resetOrRecord,
-              child: $.watch<bool>(model.$started,
+              child: $watch<bool>(model.$started,
                   builder: (context, started, child) =>
                       Text(started ? "RECORD" : "RESET"))),
           ElevatedButton(
               onPressed: model.startOrStop,
-              child: $.watch<bool>(model.$started,
+              child: $watch<bool>(model.$started,
                   builder: (context, started, child) =>
                       Text(started ? "STOP" : "START"))),
         ],
       ),
       const SizedBox(height: 40),
       Expanded(
-          child: $.watch<List<RecordItem>>(model.$list,
+          child: $watch<List<RecordItem>>(model.$list,
               builder: (context, items, child) => ListView.builder(
                   itemCount: items.length,
                   itemBuilder: (_, index) => Container(

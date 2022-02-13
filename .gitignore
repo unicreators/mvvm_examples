@@ -14,7 +14,8 @@
 ios/
 android/
 web/
-pack.sh
+macos/
+windows/
 
 
 # IntelliJ related

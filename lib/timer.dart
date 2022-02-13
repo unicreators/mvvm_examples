@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:math';
 import 'dart:ui';
 
@@ -13,10 +12,10 @@ void main() {
                   primary: Colors.black,
                   fixedSize: const Size.square(100),
                   shape: const CircleBorder()))),
-      home: Scaffold(
+      home: const Scaffold(
           body: SafeArea(
               child: DefaultTextStyle(
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 20,
                       color: Colors.black,
                       fontFeatures: [FontFeature.tabularFigures()]),
@@ -30,76 +29,64 @@ class RecordItem {
 }
 
 class TimerViewModel extends ViewModel {
-  Timer? _timer;
+  late final timer$ = BindableProperty.$tick(
+      duration: const Duration(milliseconds: 10),
+      statusChanged: (_) => setValue<bool>(#started, _.started),
+      initial: 0);
   TimerViewModel() {
-    registryProperty(#timer, BindableProperty.$value(initial: 0));
-    registryProperty(#started, BindableProperty.$value(initial: false));
-    registryProperty(#items, BindableProperty.$value(initial: <RecordItem>[]));
-  }
-
-  get started => _timer != null;
-  start() {
-    if (started) return;
-    setValue(#started, true);
-    _timer = Timer.periodic(const Duration(milliseconds: 10),
-        (_) => updateValue<int>(#timer, (timer) => ++timer));
-  }
-
-  stop() {
-    if (!started) return;
-    setValue(#started, false);
-    _timer!.cancel();
-    _timer = null;
-  }
-
-  toggle() {
-    (started) ? stop() : start();
+    registerProperty(#started, BindableProperty.$value(initial: false));
+    registerProperty(#items, BindableProperty.$value(initial: <RecordItem>[]));
   }
 
   record() {
-    updateValue<List<RecordItem>>(#items,
-        (items) => items..insert(0, RecordItem(requireValue<int>(#timer))));
+    updateValue<List<RecordItem>>(
+        #items, (items) => items..insert(0, RecordItem(timer$.value)));
   }
 
   reset() {
-    setValues(const [#timer, #items], [0, <RecordItem>[]]);
+    timer$.reset();
+    setValue(#items, <RecordItem>[]);
   }
 
   recordOrReset() {
-    started ? record() : reset();
+    timer$.started ? record() : reset();
   }
 }
 
 class TimerView extends View<TimerViewModel> {
-  TimerView({Key? key}) : super(TimerViewModel(), key: key);
+  const TimerView({Key? key}) : super(key: key);
 
   pad(int value) => "$value".padLeft(2, "0");
   format(int value) =>
       "${pad(value ~/ (60 * 100))}:${pad((value / 100 % 60).floor())}.${pad(value % 100)}";
+
   @override
-  Widget build(BuildContext context) {
+  TimerViewModel createViewModel() => TimerViewModel();
+
+  @override
+  Widget build(ViewBuildContext context, TimerViewModel model) {
     return Column(
       children: [
         const SizedBox(width: double.infinity, height: 40),
-        $.watchFor<int>(#timer,
+        $watch<int>(model.timer$,
             builder: (context, value, child) =>
                 Text(format(value), style: const TextStyle(fontSize: 60))),
         const SizedBox(height: 40),
         Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
           ElevatedButton(
               onPressed: model.recordOrReset,
-              child: $.watchFor<bool>(#started,
+              child: context.$watchFor<bool>(#started,
                   builder: (context, value, child) =>
                       Text(value ? "RECORD" : "RESET"))),
           ElevatedButton(
-              onPressed: model.toggle,
-              child: $.watchFor<bool>(#started,
+              onPressed: model.timer$.toggle,
+              child: context.$watchFor<bool>(#started,
                   builder: (context, value, child) =>
                       Text(value ? "STOP" : "START")))
         ]),
         const SizedBox(height: 40),
         Expanded(
-            child: $.watchFor<List<RecordItem>>(#items,
+            child: context.$watchFor<List<RecordItem>>(#items,
                 builder: (context, items, child) => ListView.builder(
                     itemCount: items.length,
                     itemBuilder: (_, index) => Container(
